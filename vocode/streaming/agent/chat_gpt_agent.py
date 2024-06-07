@@ -126,12 +126,13 @@ class ChatGPTAgent(RespondAgent[ChatGPTAgentConfigType]):
             if isinstance(self.openai_client, AsyncAzureOpenAI):
                 self.agent_config.azure_params = None
         else:
-            self.agent_config.azure_params.deployment_name = (
-                self.agent_config.llm_fallback.model_name
-            )
-            if isinstance(self.openai_client, AsyncOpenAI):
-                # TODO: handle OpenAI fallback to Azure
-                pass
+            if self.agent_config.azure_params:
+                self.agent_config.azure_params.deployment_name = (
+                    self.agent_config.llm_fallback.model_name
+                )
+                if isinstance(self.openai_client, AsyncOpenAI):
+                    # TODO: handle OpenAI fallback to Azure
+                    pass
 
         self.openai_client = instantiate_openai_client(self.agent_config, model_fallback=False)
         chat_parameters["model"] = self.agent_config.llm_fallback.model_name
