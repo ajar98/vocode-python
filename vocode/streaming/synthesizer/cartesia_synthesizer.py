@@ -1,8 +1,6 @@
 import io
 import wave
 
-from cartesia.tts import AsyncCartesiaTTS
-
 from vocode import getenv
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import CartesiaSynthesizerConfig
@@ -10,11 +8,18 @@ from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, Synth
 
 
 class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
+    cartesia_tts = None
+
     def __init__(
         self,
         synthesizer_config: CartesiaSynthesizerConfig,
     ):
         super().__init__(synthesizer_config)
+
+        # Lazy import the cartesia module
+        if CartesiaSynthesizer.cartesia_tts is None:
+            from cartesia.tts import AsyncCartesiaTTS
+            CartesiaSynthesizer.cartesia_tts = AsyncCartesiaTTS
 
         self.api_key = getenv("CARTESIA_API_KEY")
         self.model_id = synthesizer_config.model_id
