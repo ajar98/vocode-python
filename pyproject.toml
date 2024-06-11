@@ -40,6 +40,7 @@ miniaudio = { version = "^1.59", optional = true }
 nltk = { version = "^3.8.1", optional = true }
 pvkoala = { version = "^2.0.1", optional = true }
 pydub = { version = "^0.25.1", optional = true }
+cartesia = { version = "^0.1.1", optional = true }
 
 # Transcribers
 google-cloud-speech = { version = "^2.26.0", optional = true }
@@ -82,6 +83,7 @@ synthesizers = [
     "nltk",
     "pvkoala",
     "pydub",
+    "cartesia",
 ]
 transcribers = ["google-cloud-speech"]
 telephony = ["twilio", "vonage"]

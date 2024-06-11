@@ -7,7 +7,10 @@ from .audio import AudioEncoding, SamplingRate
 from .model import BaseModel, TypedModel
 from vocode.streaming.models.client_backend import OutputAudioConfig
 from vocode.streaming.output_device.base_output_device import BaseOutputDevice
-from vocode.streaming.telephony.constants import DEFAULT_AUDIO_ENCODING, DEFAULT_SAMPLING_RATE
+from vocode.streaming.telephony.constants import (
+    DEFAULT_AUDIO_ENCODING,
+    DEFAULT_SAMPLING_RATE,
+)
 
 
 class SynthesizerType(str, Enum):
@@ -23,6 +26,7 @@ class SynthesizerType(str, Enum):
     COQUI = "synthesizer_coqui"
     BARK = "synthesizer_bark"
     POLLY = "synthesizer_polly"
+    CARTESIA = "synthesizer_cartesia"
 
 
 class SentimentConfig(BaseModel):
@@ -49,14 +53,16 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):  # type: i
         return cls(
             sampling_rate=output_device.sampling_rate,
             audio_encoding=output_device.audio_encoding,
-            **kwargs
+            **kwargs,
         )
 
     # TODO(EPD-186): switch to from_twilio_output_device and from_vonage_output_device
     @classmethod
     def from_telephone_output_device(cls, **kwargs):
         return cls(
-            sampling_rate=DEFAULT_SAMPLING_RATE, audio_encoding=DEFAULT_AUDIO_ENCODING, **kwargs
+            sampling_rate=DEFAULT_SAMPLING_RATE,
+            audio_encoding=DEFAULT_AUDIO_ENCODING,
+            **kwargs,
         )
 
     @classmethod
@@ -64,7 +70,7 @@ class SynthesizerConfig(TypedModel, type=SynthesizerType.BASE.value):  # type: i
         return cls(
             sampling_rate=output_audio_config.sampling_rate,
             audio_encoding=output_audio_config.audio_encoding,
-            **kwargs
+            **kwargs,
         )
 
 
@@ -97,7 +103,8 @@ ELEVEN_LABS_ADAM_VOICE_ID = "pNInz6obpgDQGcFmaJgB"
 
 
 class ElevenLabsSynthesizerConfig(
-    SynthesizerConfig, type=SynthesizerType.ELEVEN_LABS.value  # type: ignore
+    SynthesizerConfig,
+    type=SynthesizerType.ELEVEN_LABS.value,  # type: ignore
 ):
     api_key: Optional[str] = None
     voice_id: Optional[str] = ELEVEN_LABS_ADAM_VOICE_ID
@@ -117,18 +124,24 @@ class ElevenLabsSynthesizerConfig(
     def stability_and_similarity_boost_check(cls, similarity_boost, values):
         stability = values.get("stability")
         if (stability is None) != (similarity_boost is None):
-            raise ValueError("Both stability and similarity_boost must be set or not set.")
+            raise ValueError(
+                "Both stability and similarity_boost must be set or not set."
+            )
         return similarity_boost
 
     @validator("optimize_streaming_latency")
     def optimize_streaming_latency_check(cls, optimize_streaming_latency):
-        if optimize_streaming_latency is not None and not (0 <= optimize_streaming_latency <= 4):
+        if optimize_streaming_latency is not None and not (
+            0 <= optimize_streaming_latency <= 4
+        ):
             raise ValueError("optimize_streaming_latency must be between 0 and 4.")
         return optimize_streaming_latency
 
     @validator("backchannel_amplitude_factor")
     def backchannel_amplitude_factor_check(cls, backchannel_amplitude_factor):
-        if backchannel_amplitude_factor is not None and not (0 < backchannel_amplitude_factor <= 1):
+        if backchannel_amplitude_factor is not None and not (
+            0 < backchannel_amplitude_factor <= 1
+        ):
             raise ValueError(
                 "backchannel_amplitude_factor must be between 0 (not inclusive) and 1."
             )
@@ -192,7 +205,8 @@ class PlayHtSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.PLAY_HT.va
 
 
 class CoquiTTSSynthesizerConfig(
-    SynthesizerConfig, type=SynthesizerType.COQUI_TTS.value  # type: ignore
+    SynthesizerConfig,
+    type=SynthesizerType.COQUI_TTS.value,  # type: ignore
 ):
     tts_kwargs: dict = {}
     speaker: Optional[str] = None
@@ -207,7 +221,8 @@ STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE = "Brian"
 
 
 class StreamElementsSynthesizerConfig(
-    SynthesizerConfig, type=SynthesizerType.STREAM_ELEMENTS.value  # type: ignore
+    SynthesizerConfig,
+    type=SynthesizerType.STREAM_ELEMENTS.value,  # type: ignore
 ):
     voice: str = STREAM_ELEMENTS_SYNTHESIZER_DEFAULT_VOICE
 
