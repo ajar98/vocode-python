@@ -3,7 +3,7 @@ from typing import AsyncGenerator, AsyncIterator
 import sentry_sdk
 from loguru import logger
 
-from langchain_core.messages.ai import AIMessageChunk
+from langchain_core.messages.base import BaseMessage as LangchainBaseMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain.chat_models import init_chat_model
 
@@ -44,10 +44,13 @@ class LangchainAgent(RespondAgent[LangchainAgentConfig]):
 
     async def token_generator(
         self,
-        gen: AsyncIterator[AIMessageChunk],
-    ) -> AsyncGenerator[str | FunctionFragment, None]:
+        gen: AsyncIterator[LangchainBaseMessage],
+    ) -> AsyncGenerator[str, None]:
         async for chunk in gen:
-            yield chunk.content
+            if isinstance(chunk.content, str):
+                yield chunk.content
+            else:
+                raise ValueError(f"Received unexpected message type {type(chunk)} from Langchain. Expected str.")
 
     def format_langchain_messages_from_transcript(self) -> list[tuple]:
         if not self.transcript:
