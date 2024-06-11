@@ -236,6 +236,7 @@ DEFAULT_CARTESIA_SAMPLING_RATE = SamplingRate.RATE_44100
 
 
 class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA.value):  # type: ignore
+    api_key: Optional[str] = None
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     output_format: str = DEFAULT_CARTESIA_OUTPUT_FORMAT

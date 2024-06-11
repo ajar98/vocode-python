@@ -8,25 +8,31 @@ from vocode.streaming.synthesizer.base_synthesizer import BaseSynthesizer, Synth
 
 
 class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
-    cartesia_tts = None
-
     def __init__(
         self,
         synthesizer_config: CartesiaSynthesizerConfig,
     ):
         super().__init__(synthesizer_config)
-
+        
         # Lazy import the cartesia module
-        if CartesiaSynthesizer.cartesia_tts is None:
+        try:
             from cartesia.tts import AsyncCartesiaTTS
-            CartesiaSynthesizer.cartesia_tts = AsyncCartesiaTTS
-
+        except ImportError as e:
+            raise ImportError(
+                f"Missing required dependancies for CartesiaSynthesizer"
+            ) from e
+        
+        self.api_key = synthesizer_config.api_key or getenv("CARTESIA_API_KEY")
+        if not self.api_key:
+            raise ValueError("Missing Cartesia API key")
+        
+        self.cartesia_tts = AsyncCartesiaTTS
         self.api_key = getenv("CARTESIA_API_KEY")
         self.model_id = synthesizer_config.model_id
         self.voice_id = synthesizer_config.voice_id
         self.sampling_rate = synthesizer_config.sampling_rate
         self.output_format = synthesizer_config.output_format
-        self.client = AsyncCartesiaTTS(api_key=self.api_key)
+        self.client = self.cartesia_tts(api_key=self.api_key)
         self.voice_embedding = self.client.get_voice_embedding(voice_id=self.voice_id)
 
     async def create_speech(
