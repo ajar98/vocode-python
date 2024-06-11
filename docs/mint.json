@@ -81,6 +81,7 @@
         "open-source/turn-based-conversation",
         "open-source/language-support",
         "open-source/sentry",
+        "open-source/logging-with-loguru",
         "open-source/agent-factory"
       ]
     },
