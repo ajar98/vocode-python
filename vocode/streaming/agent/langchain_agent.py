@@ -1,10 +1,11 @@
-from typing import AsyncGenerator, AsyncIterator
+from typing import AsyncGenerator, AsyncIterator, Optional
 
 import sentry_sdk
 from loguru import logger
 
 from langchain_core.messages.base import BaseMessage as LangchainBaseMessage
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables.base import Runnable
 from langchain.chat_models import init_chat_model
 
 from vocode.streaming.action.abstract_factory import AbstractActionFactory
@@ -12,7 +13,6 @@ from vocode.streaming.action.default_factory import DefaultActionFactory
 from vocode.streaming.agent.anthropic_utils import merge_bot_messages_for_langchain
 from vocode.streaming.agent.base_agent import GeneratedResponse, RespondAgent, StreamedResponse
 from vocode.streaming.agent.streaming_utils import collate_response_async, stream_response_async
-from vocode.streaming.models.actions import FunctionFragment
 from vocode.streaming.models.agent import LangchainAgentConfig
 from vocode.streaming.models.events import Sender
 from vocode.streaming.models.message import BaseMessage, LLMToken
@@ -26,6 +26,7 @@ class LangchainAgent(RespondAgent[LangchainAgentConfig]):
         self,
         agent_config: LangchainAgentConfig,
         action_factory: AbstractActionFactory = DefaultActionFactory(),
+        chain: Optional[Runnable] = None,
         **kwargs,
     ):
         super().__init__(
@@ -33,14 +34,18 @@ class LangchainAgent(RespondAgent[LangchainAgentConfig]):
             action_factory=action_factory,
             **kwargs,
         )
-        self.model = init_chat_model(model = self.agent_config.model_name, model_provider=self.agent_config.provider, temperature=self.agent_config.temperature, max_tokens=self.agent_config.max_tokens)
+        self.chain = chain if chain else self.create_chain()
+
+    def create_chain(self):
+        model = init_chat_model(model = self.agent_config.model_name, model_provider=self.agent_config.provider, temperature=self.agent_config.temperature, max_tokens=self.agent_config.max_tokens)
         messages_for_prompt_template = [
             ("placeholder", "{chat_history}")
         ]
         if self.agent_config.prompt_preamble:
             messages_for_prompt_template.insert(0, ("system", self.agent_config.prompt_preamble))
-        self.prompt_template = ChatPromptTemplate.from_messages(messages_for_prompt_template)
-        self.chain = self.prompt_template | self.model
+        prompt_template = ChatPromptTemplate.from_messages(messages_for_prompt_template)
+        chain = prompt_template | model
+        return chain
 
     async def token_generator(
         self,
