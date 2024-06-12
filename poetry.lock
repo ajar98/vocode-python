@@ -316,6 +316,28 @@ files = [
 ]
 
 [[package]]
+name = "cartesia"
+version = "0.1.1"
+description = "The official Python library for the Cartesia API."
+optional = true
+python-versions = ">=3.8.0"
+files = [
+    {file = "cartesia-0.1.1-py2.py3-none-any.whl", hash = "sha256:7a7365f17e220247ee2af1efdb88e69b0aa332e390c85775bf356b5e7b882498"},
+    {file = "cartesia-0.1.1.tar.gz", hash = "sha256:c584770f4698e6dc826a75b7b5fd39bfce749c88ad9786dca46edd9527710002"},
+]
+
+[package.dependencies]
+aiohttp = "*"
+httpx = "*"
+pytest-asyncio = "*"
+requests = "*"
+websockets = "*"
+
+[package.extras]
+all = ["numpy", "pytest (>=8.0.2)", "pytest-cov (>=4.1.0)", "setuptools", "twine", "wheel"]
+dev = ["numpy", "pytest (>=8.0.2)", "pytest-cov (>=4.1.0)", "setuptools", "twine", "wheel"]
+
+[[package]]
 name = "certifi"
 version = "2024.6.2"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -4847,10 +4869,10 @@ doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "rst.linke
 test = ["big-O", "importlib-resources", "jaraco.functools", "jaraco.itertools", "jaraco.test", "more-itertools", "pytest (>=6,!=8.1.*)", "pytest-checkdocs (>=2.4)", "pytest-cov", "pytest-enabler (>=2.2)", "pytest-ignore-flaky", "pytest-mypy", "pytest-ruff (>=0.2.1)"]
 
 [extras]
-all = ["google-cloud-speech", "google-cloud-texttospeech", "langchain", "langchain-anthropic", "langchain-community", "langchain-google-vertexai", "langchain-openai", "miniaudio", "nltk", "pvkoala", "pydub", "twilio", "vonage"]
+all = ["cartesia", "google-cloud-speech", "google-cloud-texttospeech", "langchain", "langchain-anthropic", "langchain-community", "langchain-google-vertexai", "langchain-openai", "miniaudio", "nltk", "pvkoala", "pydub", "twilio", "vonage"]
 langchain = ["langchain", "langchain-community"]
 langchain-extras = ["langchain-anthropic", "langchain-google-vertexai", "langchain-openai"]
-synthesizers = ["google-cloud-texttospeech", "miniaudio", "pvkoala", "pydub"]
+synthesizers = ["cartesia", "google-cloud-texttospeech", "miniaudio", "pvkoala", "pydub"]
 telephony = ["twilio", "vonage"]
 transcribers = ["google-cloud-speech"]
 
