@@ -1,15 +1,22 @@
 import asyncio
-from typing import Optional
+import io
+import os
+from typing import List, Optional, cast
 
 from cartesia import AsyncCartesiaTTS
-from cartesia.tts import AudioOutputFormat
+from cartesia.tts import AudioOutput, AudioOutputFormat
+from loguru import logger
+from pydub import AudioSegment
 
 from vocode import getenv
 from vocode.streaming.models.audio import AudioEncoding
 from vocode.streaming.models.message import BaseMessage
 from vocode.streaming.models.synthesizer import SynthesizerConfig, SynthesizerType
 from vocode.streaming.synthesizer.base_synthesizer import (
+    FILLER_AUDIO_PATH,
+    FILLER_PHRASES,
     BaseSynthesizer,
+    FillerAudio,
     SynthesisResult,
 )
 
@@ -40,6 +47,12 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         voices = self.catesia_client.get_voices()
         voice_id = voices[self.synthesizer_config.voice_name]["id"]
         self.voice = self.catesia_client.get_voice_embedding(voice_id=voice_id)
+
+        self.output_format = (
+            synthesizer_config.output_format
+            if isinstance(synthesizer_config.output_format, str)
+            else synthesizer_config.output_format.value
+        )
 
     async def create_speech_uncached(
         self,
@@ -78,17 +91,67 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
 
     @classmethod
     def get_voice_identifier(cls, synthesizer_config: CartesiaSynthesizerConfig):
-        output_format = (
-            synthesizer_config.output_format
-            if isinstance(synthesizer_config.output_format, str)
-            else synthesizer_config.output_format.value
-        )
-
+        instance = cls(synthesizer_config)
         return ":".join(
             (
                 SynthesizerType.CARTESIA.value,
                 synthesizer_config.model_id,
                 synthesizer_config.audio_encoding,
-                output_format,
+                instance.output_format,
             )
         )
+
+    async def get_phrase_filler_audios(self) -> List[FillerAudio]:
+        filler_phrase_audios = []
+        for filler_phrase in FILLER_PHRASES:
+            cache_key = "-".join(
+                (
+                    str(filler_phrase.text),
+                    str(self.output_format),
+                    str(self.synthesizer_config.audio_encoding.value),
+                    str(self.synthesizer_config.sampling_rate),
+                    str(self.synthesizer_config.model_id),
+                    str(self.synthesizer_config.voice_name),
+                )
+            )
+            filler_audio_path = os.path.join(FILLER_AUDIO_PATH, f"{cache_key}.bytes")
+            if os.path.exists(filler_audio_path):
+                audio_data = open(filler_audio_path, "rb").read()
+            else:
+                logger.debug(f"Generating filler audio for {filler_phrase.text}")
+                audio_data, sample_rate = await self.create_audio(filler_phrase.text)
+
+                audio = AudioSegment.from_raw(
+                    io.BytesIO(audio_data),  # type: ignore
+                    frame_rate=sample_rate,
+                    channels=1,
+                    sample_width=2,
+                )
+                audio.export(filler_audio_path, format="wav")
+            filler_phrase_audios.append(
+                FillerAudio(
+                    message=filler_phrase,
+                    audio_data=audio_data,
+                    synthesizer_config=self.synthesizer_config,
+                )
+            )
+        return filler_phrase_audios
+
+    async def create_audio(self, text: str) -> tuple[bytes, int]:
+        data = await self.catesia_client.generate(
+            voice=self.voice,
+            stream=False,
+            data_rtype=self.synthesizer_config.data_rtype,
+            model_id=self.synthesizer_config.model_id,
+            output_format=self.synthesizer_config.output_format,
+            transcript=text,
+        )
+
+        data = cast(AudioOutput, data)
+        if isinstance(data["audio"], bytes):
+            return data["audio"], data["sampling_rate"]
+        raise ValueError(
+            f"Unexpected data type for filler audio: {type(data['audio'])}"
+        )
+
+  
