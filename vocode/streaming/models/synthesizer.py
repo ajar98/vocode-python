@@ -231,7 +231,6 @@ class PollySynthesizerConfig(SynthesizerConfig, type=SynthesizerType.POLLY.value
 
 DEFAULT_CARTESIA_MODEL_ID = 'upbeat-moon'
 DEFAULT_CARTESIA_VOICE_ID = '5345cf08-6f37-424d-a5d9-8ae1101b9377'
-DEFAULT_CARTESIA_AUDIO_ENCODING = AudioEncoding.LINEAR16
 
 
 class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA.value):  # type: ignore
