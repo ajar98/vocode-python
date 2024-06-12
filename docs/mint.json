@@ -49,7 +49,11 @@
   "navigation": [
     {
       "group": "Getting Started",
-      "pages": ["welcome", "hosted-quickstart", "open-source-quickstart"]
+      "pages": [
+        "welcome",
+        "hosted-quickstart",
+        "open-source-quickstart"
+      ]
     },
     {
       "group": "Vocode 101",
@@ -68,6 +72,7 @@
         "open-source/conversation-mechanics",
         "open-source/langchain-agent",
         "open-source/action-agents",
+        "open-source/action-phrase-triggers",
         "open-source/local-conversation",
         "open-source/events-manager",
         "open-source/using-synthesizers",
@@ -76,7 +81,7 @@
         "open-source/playground",
         "open-source/turn-based-conversation",
         "open-source/language-support",
-        "open-source/tracing",
+        "open-source/logging-with-loguru",
         "open-source/agent-factory"
       ]
     },
@@ -110,7 +115,9 @@
     },
     {
       "group": "Usage",
-      "pages": ["api-reference/usage/get-usage"]
+      "pages": [
+        "api-reference/usage/get-usage"
+      ]
     },
     {
       "group": "Actions",
