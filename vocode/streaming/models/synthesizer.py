@@ -240,4 +240,3 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
     audio_encoding: AudioEncoding = DEFAULT_CARTESIA_AUDIO_ENCODING
-    sampling_rate: int = DEFAULT_CARTESIA_SAMPLING_RATE
