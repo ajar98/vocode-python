@@ -239,4 +239,3 @@ class CartesiaSynthesizerConfig(SynthesizerConfig, type=SynthesizerType.CARTESIA
     api_key: Optional[str] = None
     model_id: str = DEFAULT_CARTESIA_MODEL_ID
     voice_id: str = DEFAULT_CARTESIA_VOICE_ID
-    audio_encoding: AudioEncoding = DEFAULT_CARTESIA_AUDIO_ENCODING
