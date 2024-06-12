@@ -31,7 +31,6 @@ class CartesiaSynthesizer(BaseSynthesizer[CartesiaSynthesizerConfig]):
         if not self.api_key:
             raise ValueError("Missing Cartesia API key")
         
-        self.api_key = getenv("CARTESIA_API_KEY")
 
         if synthesizer_config.audio_encoding == AudioEncoding.LINEAR16:
             self.channel_width = 2
