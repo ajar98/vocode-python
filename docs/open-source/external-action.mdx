@@ -5,8 +5,9 @@ description: "Have your agent communicate with an External API"
 
 External Actions allow Vocode agents to take actions outside the realm of a phone call. In particular, Vocode agents can decide to _push_ information to external systems via an API request, and _pull_ information from the API response in order to:
 
-1. change the agent’s behavior based on the pulled information
-2. give the agent context to inform the rest of the phone call
+1. give the agent context to inform the rest of the phone call
+2. change the agent’s behavior based on the pulled information
+3. run functions/tasks outside the call
 
 ## How it Works
 
@@ -16,7 +17,7 @@ The Vocode Agent will determine after each turn of conversation if its the ideal
 
 #### Overview
 
-- `processing_mode`: while it only supports `muted` right now, the intent is for this field to (in the future) enable hold music while processing the request, or to enable the agent to continue speaking until the request returns.
+- `processing_mode`: We currently only support `muted`, which makes the agent silent while processing the request.
 
 - `name`: the name of the external action -- this has no impact on the functionality of action itself.
 
@@ -25,21 +26,20 @@ The Vocode Agent will determine after each turn of conversation if its the ideal
 - `url`: The API request is sent to this URL in the format
   defined below in [Responding to External Action API Requests](/open-source/external-action#input-schema-field)
 
-- `input_schema`: A [JSON Schema](https://json-schema.org/) object that instructs how to properly form a payload to send to the External API. See the [`input_schema` field section below](/open-source/external-action#responding-to-external-action-api-requests) for more info!
+- `input_schema`: A [JSON Schema](https://json-schema.org/) for the payload to send to the External API. See the [`input_schema` field section below](/open-source/external-action#responding-to-external-action-api-requests) for more info!
 
-- `speak_on_send`: if `True`, then the underlying LLM will generate a message to be spoken into the phone call as the
+- `speak_on_send`: if `True`, then the underlying LLM will generate a message to be spoken as the
   API request is being sent.
 
-- `speak_on_receive`: if `True`, then the Vocode Agent will invoke the underlying
-  LLM to respond based on the result from the API Response or the Error encountered.
+- `speak_on_receive`: if `True`, then the agent will speak once it receives a result from the API Response. If the response does not contain an `agent_message` (see [Response Formatting](#response-formatting)), the agent will query the LLM for the message to speak.
 
 - `signature_secret`: a base64 encoded string to enable request validation, see the [Signature Validation section](/open-source/external-action#signature-validation) below for more info
 
 #### `input_schema` Field
 
-The `input_schema` field is a [JSON Schema](https://json-schema.org/) object that instructs how to properly form a payload to send to the External API.
+The `input_schema` field is a [JSON Schema](https://json-schema.org/) form the payload to send to the External API.
 
-For example, in the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below we formed the following JSON payload:
+For example, in the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below we formed the following JSON schema:
 
 ```json
 {
@@ -77,17 +77,16 @@ The `description` is best used to descibe your External Action's purpose. As its
 For example, in the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below we want to book a meeting for 30 minutes to an hour so we set the description as `Book a meeting for a 30 minute or 1 hour call.`
 
 <Card title="💡 Note" color="#ca8b04">
-  The `description` field is passed through and heavily affects how we do our
-  function decisioning so we recommend treating it in the same way you would a
-  prompt to an LLM!
+  The `description` field is passed through and heavily affects how functions are triggered and queried,
+   so we recommend treating it similar to prompting for an LLM!
 </Card>
 
 ### Responding to External Action API Requests
 
-Once an External Action has been created, the Vocode Agent will issue API requests to the defined `url` during the course of a phone call based on the [configuration noted above](/open-source/external-action#configuring-the-external-action)
+Once an External Action has been created, the Vocode Agent will issue API requests to the defined `url` during the course of a phone call based on the [configuration noted above](/open-source/external-action#configuring-an-external-action-with-executeexternalactionvocodeactionconfig)
 The Vocode API will wait a maximum of _10 seconds_ before timing out the request.
 
-In particular, Vocode will issue a POST request to `url` with a JSON payload that matches `input_schema` , specifically (using the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below):
+In particular, Vocode will issue a POST request to `url` with a JSON payload that specifically matches `input_schema`. Using the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below, the request will contain:
 
 ```bash
 POST url HTTP/1.1
@@ -96,16 +95,16 @@ Content-Type: application/json
 x-vocode-signature: <encoded_signature>
 
 {
-	"payload": {
-	  "length": "30m",
-	  "time": "10:30am"
+  "payload": {
+    "length": "30m",
+    "time": "10:30am"
   }
 }
 ```
 
 #### Signature Validation
 
-A cryptographically signed signature of the request body and a randomly generated byte hash is included as a header (under `x-vocode-signature`) in the outbound request so that the user’s API can validate the identity of the incoming request. The signature secret is used to sign the request and is used to ensure the validity of the `x-vocode-signature` field.
+A cryptographically signed signature of the request body and a randomly generated byte hash is included as a header (under `x-vocode-signature`) in the outbound request, so the receiving API can validate the identity of the incoming request. The signature secret is used to sign the request and ensure the validity of the `x-vocode-signature` field, and therefore *must be securely managed*.
 
 This should be set as a base64-encoded string and we recommend a longer length as well, using the following snippet as an example:
 
@@ -124,14 +123,14 @@ import hashlib
 import hmac
 
 async def test_requester_encodes_signature(
-request_signature_value: str, signature_secret: str, payload: dict
+  request_signature_value: str, signature_secret: str, payload: dict
 ):
-"""
-Asynchronous function to check if the request signature is encoded correctly.
+    """
+    Asynchronous function to check if the request signature is encoded correctly.
 
     Args:
         request_signature_value (str): The request signature to be decoded.
-        signature_secret (str): The signature to be decoded and used for comparison.
+        signature_secret (str): The secret for the action (make sure this is stored securely).
         payload (dict): The payload to be used for digest calculation.
 
     Returns:
@@ -139,7 +138,7 @@ Asynchronous function to check if the request signature is encoded correctly.
     """
     signature_secret_as_bytes = base64.b64decode(signature_secret)
     decoded_digest = base64.b64decode(request_signature_value)
-    calculated_digest = hmac.new(signature_secret_as_bytes, payload, hashlib.sha256).digest()
+    calculated_digest = hmac.new(signature_secret_as_bytes, json.dumps(payload).encode(), hashlib.sha256).digest()
     assert hmac.compare_digest(decoded_digest, calculated_digest) is True
 
 ```
@@ -150,13 +149,13 @@ Vocode expects responses from the user’s API in JSON in the following format:
 
 ```python
 Response {
-	result: Any
-	agent_message: Optional[str] = None
+  result: Any
+  agent_message: Optional[str] = None
 }
 ```
 
 - `result` is a payload containing the result of the action on the user’s side, and can be in any format
-- `agent_message` optionally contains a message that will be synthesized into audio and sent back to the phone call (see [Configuring the External Action](/open-source/external-action#configuring-the-external-action) above for more info)
+- `agent_message` optionally contains a message that will be synthesized into audio and sent back to the phone call. Note this means the LLM will not be queried to send a message (see [Configuring the External Action](/open-source/external-action#configuring-an-external-action-with-executeexternalactionvocodeactionconfig) above for more info)
 
 In the [Meeting Assistant Example](/open-source/external-action#meeting-assistant-example) below, the user’s API could return back a JSON response that looks like:
 
@@ -177,27 +176,43 @@ Running `fastapi dev app.py` will run the server @ `http://127.0.0.1:8000` and c
 
 <CodeGroup>
 ```python app.py
+import asyncio
+import base64
+import hashlib
+import hmac
+import json
 import time
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, status
 from pydantic import BaseModel
 
 app = FastAPI()
 
-class ExternalActionRequest(BaseModel):
-class Payload(BaseModel):
-length: str
-time: str
+action_secret = ""
 
-    call_id: str
-    payload: Payload
+
+def is_signature_valid(request: Request, json_payload: dict):
+    signature_secret_as_bytes = base64.b64decode(action_secret)
+    decoded_digest = base64.b64decode(request.headers.get("x-vocode-signature"))
+    calculated_digest = hmac.new(
+        signature_secret_as_bytes, json.dumps(json_payload).encode(), hashlib.sha256
+    ).digest()
+    return hmac.compare_digest(decoded_digest, calculated_digest)
+
 
 @app.post("/external_action")
-def update_item(external_action_request: ExternalActionRequest):
-print(f"Received request:\n{external_action_request.model_dump_json(indent=2)}")
-time.sleep(3)
-return {"result": {"success": True}}
-
+def update_item(request: Request):
+    json_payload = asyncio.run(request.json())
+    print(json_payload)
+    if not is_signature_valid(request, json_payload):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Signature verification failed for payload",
+        )
+    time.sleep(3)
+    return {
+        "result": {"success": True},
+    }
 ````
 ```txt requirements.txt
 pydantic==2.*
