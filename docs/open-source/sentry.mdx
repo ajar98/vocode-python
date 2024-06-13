@@ -16,7 +16,7 @@ Integrating Sentry into your application allows you to:
 - Gain insights into the user experience and identify bottlenecks.
 - Improve the overall reliability and stability of your application.
 
-## Configuring Sentry SDK
+## Configuring Sentry
 
 To integrate Sentry into your application, you need to initialize the Sentry SDK at the earliest instantiation point in your code. This ensures that Sentry starts capturing errors and performance data as soon as possible.
 
@@ -32,10 +32,9 @@ sentry_sdk.init(
     dsn=os.getenv("SENTRY_DSN"),
     environment=os.getenv("ENVIRONMENT"),
     # Sample rate for transactions (performance).
-    traces_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", 1.0)),
-    profiles_sample_rate=float(os.getenv("SENTRY_TRACES_SAMPLE_RATE", 1.0)),
+    traces_sample_rate=1.0,
     # Sample rate for exceptions / crashes.
-    sample_rate=float(os.getenv("SENTRY_SAMPLE_RATE", 1.0)),
+    sample_rate=1.0,
     max_request_body_size="always",
     integrations=[
         AsyncioIntegration(),
@@ -44,62 +43,93 @@ sentry_sdk.init(
 )
 ```
 
-### Explanation of Configuration Settings
+Head to [sentry.io](sentry.io) to get your free DSN! See https://docs.sentry.io/platforms/python/configuration/options/ for more info about the above options.
 
-- `dsn`: The Data Source Name (DSN) is a unique identifier for your Sentry project. It tells the SDK where to send the captured data.
-- `environment`: The environment in which your application is running (e.g., production, staging, development).
-- `traces_sample_rate`: The sample rate for capturing performance data (transactions). A value of `1.0` means 100% of transactions will be captured.
-- `profiles_sample_rate`: The sample rate for capturing profiling data. Similar to `traces_sample_rate`.
-- `sample_rate`: The sample rate for capturing errors and exceptions. A value of `1.0` means 100% of errors will be captured.
-- `max_request_body_size`: Configures the maximum size of request bodies to capture. Setting it to `"always"` ensures all request bodies are captured.
-- `integrations`: A list of integrations to use with Sentry. In this case, we're using `AsyncioIntegration` for asyncio support and `LoguruIntegration` for Loguru logging support.
+## Instrumenting your application
 
-## Custom Sentry Spans
+Vocode exposes a set of custom spans that get automatically sent to Sentry during Vocode conversations. To use these spans, you'll need to manually attach a transaction to the current scope.
 
-In addition to automatic error and performance monitoring, you can manually create and manage spans to gain deeper insights into specific parts of your application. The `CustomSentrySpans` class defines several custom spans that you can use to measure specific events and durations within your application. Here's a more human-readable explanation of each span and what it captures:
+### Example 1: Streaming Conversation
 
-### Span Descriptions
+Update `quickstarts/streaming_conversation.py`, replace the `main` function with the following code:
 
-1. **Connected to First Send** _(`CONNECTED_TO_FIRST_SEND`)_: Measures the time from when a connection is established to when the first data is sent. This can help identify delays in the initial data transmission.
+```python
+import sentry_sdk
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
+from sentry_sdk.integrations.loguru import LoguruIntegration
+from vocode import sentry_transaction
 
-2. **Endpointing Latency** _(`ENDPOINTING_LATENCY`)_: Captures the latency involved in endpointing, which is the process of determining the end of a spoken phrase or sentence. This is crucial for applications involving speech recognition.
+sentry_sdk.init(
+    ...,
+    integrations=[
+        AsyncioIntegration(),
+        LoguruIntegration(),
+    ],
+)
 
-3. **First Send to First Receive** _(`FIRST_SEND_TO_FIRST_RECEIVE`)_: Measures the time from when the first data is sent to when the first response is received. This span helps in understanding the round-trip time for the initial communication.
+async def main():
+    ...
+    await conversation.start()
+    ...
 
-4. **Language Model Time to First Token** _(`LANGUAGE_MODEL_TIME_TO_FIRST_TOKEN`)_: Tracks the time taken by the language model to generate the first token (word or character) in its response. This is useful for evaluating the performance of language models like GPT-4o.
 
-5. **Latency of Conversation** _(`LATENCY_OF_CONVERSATION`)_: Measures the overall latency of a conversation, from start to finish. This span provides insights into the responsiveness of the entire conversational flow.
+if __name__ == "__main__":
+    with sentry_sdk.start_transaction(
+        op="streaming_conversation", description="streaming_conversation"
+    ) as sentry_txn:
+        sentry_transaction.set(sentry_txn)
+        asyncio.run(main())
+```
 
-6. **Latency of Transcription Start** _(`LATENCY_OF_TRANSCRIPTION_START`)_: Captures the time taken to start the transcription process after receiving audio input. This is important for applications that convert speech to text.
+Head to the Performance pane in Sentry and click into the trace, you should see something that looks like this:
 
-7. **LLM First Sentence Total** _(`LLM_FIRST_SENTENCE_TOTAL`)_: Measures the total time taken by the language model to generate the first complete sentence. This span helps in assessing the initial response time of the language model.
+![Sentry Transaction](/images/sentry.png)
 
-8. **Start to Connection** _(`START_TO_CONNECTION`)_: Tracks the time from the start of an operation to the establishment of a connection. This can help identify delays in the connection setup phase.
+### Example 2: Telephony Server
 
-9. **Synthesis Generate First Chunk** _(`SYNTHESIS_GENERATE_FIRST_CHUNK`)_: Measures the time taken to generate the first chunk of synthesized speech. This is crucial for applications that convert text to speech.
+Simply instantiate the Sentry SDK at the top of the file, e.g. in `app/telephony_app/main.py`
 
-10. **Synthesis Time to First Token** _(`SYNTHESIS_TIME_TO_FIRST_TOKEN`)_: Captures the time taken to generate the first token (word or character) in the synthesized speech. This span helps in evaluating the performance of speech synthesis models.
+```python
+sentry_sdk.init(
+    ...
+)
 
-11. **Time to First Token** _(`TIME_TO_FIRST_TOKEN`)_: Measures the overall time taken to generate the first token in any process, whether it's language modeling or speech synthesis. This span provides a general metric for initial response time.
+app = FastAPI(docs_url=None)
+```
 
-12. **Synthesizer Synthesis Total** _(`SYNTHESIZER_SYNTHESIS_TOTAL`)_: Tracks the total time taken for the entire speech synthesis process. This span helps in understanding the overall performance of the synthesizer.
+## Custom Spans Overview
 
-13. **Synthesizer Time to First Token** _(`SYNTHESIZER_TIME_TO_FIRST_TOKEN`)_: Measures the time taken by the synthesizer to generate the first token in the synthesized speech. This is useful for evaluating the initial response time of the synthesizer.
+### Latency of Conversation
 
-14. **Synthesizer Create Speech** _(`SYNTHESIZER_CREATE_SPEECH`)_: Captures the time taken to create the entire speech output. This span provides insights into the performance of the speech creation process.
+**Latency of Conversation** _(`LATENCY_OF_CONVERSATION`)_ measures the overall latency of a conversation, from when the user finishes their utterance to when the agent begins its response. It is broken up into the following sub-spans:
 
-#### Note on Synthesizer Spans
+- **[Deepgram Only] Endpointing Latency** _(`ENDPOINTING_LATENCY`)_: Captures the extra latency involved from retrieving finalized transcripts from Deepgram before deciding to invoke the agent.
+- **Language model Time to First Token** _(`LANGUAGE_MODEL_TIME_TO_FIRST_TOKEN`)_: Tracks the time taken by the language model to generate the first token (word or character) in its response.
+- **Synthesis Time to First Token** _(`SYNTHESIS_TIME_TO_FIRST_TOKEN`)_: Measures the time taken by the synthesizer to generate the first token in the synthesized speech. This is useful for evaluating the initial response time of the synthesizer.
 
-The following spans will have the actual synthesizer's name prepended to them. For example, if the synthesizer is `ElevenLabsSynthesizer`, the span `SYNTHESIZER_SYNTHESIS_TOTAL` will be recorded as `ElevenLabsSynthesizer.synthesis_total`:
+### Deepgram
+
+We capture the following spans in our Deepgram integration:
+
+- **Connected to First Send** _(`CONNECTED_TO_FIRST_SEND`)_: Measures the time from when the Deepgram websocket connection is established to when the first data is sent
+- **[Deepgram Only] First Send to First Receive** _(`FIRST_SEND_TO_FIRST_RECEIVE`)_: Measures the time from when the first data is sent to Deepgram to when the first response is received
+- **[Deepgram Only] Start to Connection** _(`START_TO_CONNECTION`)_: Tracks the time it takes to establish the websocket connection with Deepgram
+
+### LLM
+
+For our OpenAI and Anthropic integrations, we capture:
+
+- **Time to First Token** _(`TIME_TO_FIRST_TOKEN`)_: Measures the time taken by the language model to generate the first token (word or character) in its response.
+- **LLM First Sentence Total** _(`LLM_FIRST_SENTENCE_TOTAL`)_: Measures the total time taken by the language model to generate the first complete sentence.
+
+### Synthesizer
+
+For most of our synthesizer integrations, we capture:
+
+- **Synthesis Generate First Chunk** _(`SYNTHESIS_GENERATE_FIRST_CHUNK`)_: Measures the time taken to generate the first chunk of synthesized speech.
+- **Synthesizer Synthesis Total** _(`SYNTHESIZER_SYNTHESIS_TOTAL`)_: Tracks the total time taken for the entire speech synthesis process. This span helps in understanding the overall performance of the synthesizer.
+
+These spans will have the actual synthesizer's name prepended to them. For example, if the synthesizer is `ElevenLabsSynthesizer`, the span `SYNTHESIZER_SYNTHESIS_TOTAL` will be recorded as `ElevenLabsSynthesizer.synthesis_total`:
 
 - **Synthesis Total** _(`SYNTHESIZER_SYNTHESIS_TOTAL`)_
 - **Time to First Token** _(`SYNTHESIZER_TIME_TO_FIRST_TOKEN`)_
-- **Create Speech** _(`SYNTHESIZER_CREATE_SPEECH`)_
-
-This naming convention helps in identifying and differentiating spans for various synthesizers in your application.
-
-## Wrap Up
-
-Integrating Sentry into your application provides valuable insights into errors, exceptions, and performance issues. By configuring the Sentry SDK and using custom spans, you can monitor the health of your application and improve its reliability and stability.
-
-For more information on Sentry and its features, refer to the [official documentation](https://docs.sentry.io/).
