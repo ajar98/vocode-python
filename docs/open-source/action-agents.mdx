@@ -150,11 +150,11 @@ class NylasSendEmail(
 
 ```
 We define a structured set of parameters that the LLM will fill, a response structure that the agent can ingest and use as context for the rest of the conversation, and an action
-config that crucially contains the `action_type` (but doesn't have any other specific parameters). We also add an `_end_of_run_hook()` that we customized to log that the action successfully completed.
+config that crucially contains the `action_type` (but doesn't have any other specific parameters). We also add an `_end_of_run_hook()`, which we customized to log that the action successfully completed.
 
 
 ### Making a custom `ActionFactory`
-To use our new action with an agent in a conversation, we will need to create an `ActionFactory` that can produce instances your custom action.
+To use our new action with an agent in a conversation, we will need to create an `ActionFactory` that can produce instances the action.
 
 
 We will store the code above in `nylas_send_email.py` and create a factory that can create this action for an agent:
