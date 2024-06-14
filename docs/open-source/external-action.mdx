@@ -221,9 +221,9 @@ fastapi==0.111.*
 
 </CodeGroup>
 
-## Meeting Assistant Example:
+## Meeting Assistant Example
 
-This is an example of how to configure a Meeting Assistant Action which will attempt to book a meeting for 30 minutes or an hour at any time ending in a zero (ie 10:30am is okay but 10:35am is not)
+This is an example of how to create an action config which will attempt to book a meeting for 30 minutes or an hour at any time ending in a zero (ie 10:30am is okay but 10:35am is not)
 
 ```python Python
 import json
@@ -249,17 +249,15 @@ ACTION_INPUT_SCHEMA = {
     },
 }
 
-action_config = {
-    "name": "Meeting_Booking_Assistant",
-    "description": "Book a meeting for a 30 minute or 1 hour call.",
-    "url": "http://example.com/booking",
-    "speak_on_send": True,
-    "speak_on_receive": True,
-    "input_schema": json.dumps(ACTION_INPUT_SCHEMA),
-    "signature_secret": base64.b64encode(os.urandom(32)).decode(),
-}
-
-action = ExecuteExternalAction(
-    action_config=ExecuteExternalActionVocodeActionConfig(**action_config),
+action_config = ExecuteExternalActionVocodeActionConfig(
+    name = "Meeting_Booking_Assistant",
+    description = "Book a meeting for a 30 minute or 1 hour call.",
+    url = "http://example.com/booking",
+    speak_on_send = True,
+    speak_on_receive = True,
+    input_schema = json.dumps(ACTION_INPUT_SCHEMA),
+    signature_secret = base64.b64encode(os.urandom(32)).decode(),
 )
 ```
+See [Action Agents](/open-source/action-agents#using-your-action-and-action-factory-in-an-agent) for an example of how to use this action config with an agent in a conversation.
+Note that you do not need to create a custom action factory, since `DefaultActionFactory` already supports external actions.
