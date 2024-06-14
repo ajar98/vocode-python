@@ -157,7 +157,7 @@ config that crucially contains the `action_type` (but doesn't have any other spe
 To use our new action with an agent in a conversation, we will need to create an `ActionFactory` that can produce instances of the action.
 
 
-We will store the code above in `nylas_send_email.py` and create a factory that can create this action for an agent:
+We will store the code above in `nylas_send_email.py` and make a factory that can create this action for an agent:
 
 ```python
 from typing import Dict, Sequence, Type
@@ -177,7 +177,7 @@ class MyCustomActionFactory(AbstractActionFactory):
 
 ### Using your action and action factory in an agent
 
-Now you can use your action in any conversation by adding the action config to any agent config and passing in your action factory. For example, you can create a ChatGPT agent config:
+Now you can use your action in any conversation by adding the action config to an agent config. For example in a ChatGPTAgentConfig,
 
 ```python
 action_config = ChatGPTAgentConfig(
@@ -190,5 +190,5 @@ action_config = ChatGPTAgentConfig(
 )
 ```
 
-Now, you have a config for an agent that uses your new action! When you pass in your new action factory [created above](#making-a-custom-actionfactory), any agent factory can generate this agent for conversations.
+When you pass in your new action factory [created above](#making-a-custom-actionfactory), any agent factory can use this config to generate an agent for conversations.
 See [Agent Factory](/open-source/agent-factory) for more information on how to use your action factory in an agent factory, as well as how to plug it into a telephony server.
